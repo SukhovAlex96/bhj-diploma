@@ -7,9 +7,9 @@ class CreateTransactionForm extends AsyncForm {
    * Вызывает родительский конструктор и
    * метод renderAccountsList
    * */
-  constructor( element ) {
-    super( element );
-    this.renderAccountsList();
+  constructor(element) {
+    super(element)
+    // this.renderAccountsList()
   }
 
   /**
@@ -17,17 +17,24 @@ class CreateTransactionForm extends AsyncForm {
    * Обновляет в форме всплывающего окна выпадающий список
    * */
   renderAccountsList() {
-    const accoutSelect = this.element.querySelector('.accounts-select'),
-        renderItem = item => {console.log(item); accoutSelect.innerHTML += `<option value="${item.id}">${item.name}</option>`;}
-
-    Account.list(User.current(), (err, response) => {
-      if (response && response.data) {
-        accoutSelect.innerHTML = '';
-        response.data.forEach( renderItem );
-      } else {
-        return;
+    let fragment = new DocumentFragment()
+    Account.list({}, (err, response) => {
+      if (response.success) {
+        response.data.forEach(elem => {
+          let optionsItem = document.createElement('option')
+          optionsItem.setAttribute('value', `${elem.id}`)
+          optionsItem.innerText = elem.name
+          fragment.append(optionsItem)
+        })
       }
-    });
+      const select = this.element.querySelector('.accounts-select')
+      // Очистка списка
+      while (select.firstChild) {
+        select.removeChild(select.firstChild)
+      }
+      //Добавление элементов
+      select.prepend(fragment)
+    })
   }
 
   /**
@@ -36,20 +43,20 @@ class CreateTransactionForm extends AsyncForm {
    * вызывает App.update(), сбрасывает форму и закрывает окно,
    * в котором находится форма
    * */
-  onSubmit( options ) {
-    Transaction.create( options.data, ( err, response ) => {
-      if ( !response.success ) {
-        return
+  onSubmit(data) {
+    const type = data.type[0].toUpperCase() + data.type.slice(1)
+    Transaction.create(data, (err, response) => {
+      if (response.success) {
+        // Закрывает активное окно
+        App.getModal(`new${type}`).close()
+        // Сбрасываем форму
+        App.getForm(`create${type}`).element.reset()
+        // Обовляем App
+        App.update()
+      } else {
+        console.error(response.error)
+        alert(response.error)
       }
-      App.getWidget( 'accounts' ).update();
-      this.element.reset();
-
-      const { type } = options.data,
-          modalName = 'new' + type[ 0 ].toUpperCase() + type.substr( 1 ),
-          modal = App.getModal( modalName );
-      modal.close();
-
-      App.update();
-    });
+    })
   }
 }
